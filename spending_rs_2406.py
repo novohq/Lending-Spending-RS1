@@ -51,7 +51,7 @@ seed = 9
 
 corr_arr = 0.5 # person correlation coefficient # change it to 0.5
 vif_arr = 5 # vif coefficient
-features_arr = 12 # total number of features to be selected from backward feature selection
+features_arr = 10 # total number of features to be selected from backward feature selection
 iv_upper_limit = 0.6 # upper threshold of iv # change it to 0.6
 iv_lower_limit = 0.02 # lower threshold of iv
 
@@ -554,11 +554,6 @@ df['perc_service_finance_spend_l3m'] = (df['total_service_finance_l3m'] / df['to
 # df['perc_gambling_merc_spend_l3m'] = (df['total_gambling_merc_l3m'] / df['total_debit_amount_l3m']) * 100
 
 
-## counts of txns greater than 500 dollars
-
-# invoice of 
-
-
 
         
 ## Infinity and missing value 
@@ -750,28 +745,25 @@ len(feature_list)
 feat_list = ft.backward_feature_selection(df[feature_list], y_train, num_features=features_arr)
 feat_list
 
-# manual eyeballing 
-# remove gambling and additional columns
-
-feat_list = ['avg_txn_amount_service_finance_l3m',
-                 'txn_count_payroll_spend_l1m',
-                 'txn_count_rent_spend_l1m',
-                 'count_txn_utility_spend_l1m',
-                 'avg_txn_amount_cc_payment_l1m',
-                 'count_txn_cc_payment_l1m',
-                 'total_personal_spend_l1m',
-                 'count_txn_personal_spend_l1m',
-                 'avg_txn_amount_service_finance_l1m',
-                 'count_txn_service_finance_l1m',
-                 'trend_utility_l1l6m',
-                 'trend_ad_spend_l1l6m',
-                 'trend_personal_spend_l1l6m',
-                 'perc_utility_spend_l3m',
-                 'perc_service_finance_spend_l3m']
 
 
+# manual process
 
-## think about sequence here--- bfe vs. woe binning
+# 1. drop variables based on fill rate, inconsistency
+# replace with higher IV's wherever possible
+
+feat_list = ['count_txn_personal_spend_l6m',
+              'count_txn_service_finance_l6m', # replaced with l6m from l3m
+              # 'txn_count_rent_spend_l1m', # inconsistent, fill rate
+             'avg_txn_amount_cc_payment_l3m', # high IV, replaced l6m
+             # 'count_txn_cc_payment_l1m',   # inconsistent
+              'total_personal_spend_l1m',
+             'avg_txn_amount_service_finance_l3m',  #1 # l3m
+              # 'trend_ad_spend_l3l6m', # drop - inconsistent, fill rate
+             'trend_personal_spend_l1l6m',
+             'perc_service_finance_spend_l6m'
+             ]
+
 
 
 ## optimal binning woe
@@ -788,7 +780,7 @@ df_temp['target'] = df['target']
 Xt= df_temp['avg_txn_amount_service_finance_l3m']
 yt = df_temp['target'].astype(int)
 
-optb = OptimalBinning(name='avg_txn_amount_service_finance_l3m', dtype="numerical", max_n_prebins=4, monotonic_trend='descending')
+optb = OptimalBinning(name='avg_txn_amount_service_finance_l3m', dtype="numerical", max_n_prebins=6, special_codes=[0], monotonic_trend='descending')
 optb.fit(Xt, yt)  
 
 Xt_binned = optb.transform(Xt)
@@ -799,143 +791,72 @@ optb.binning_table.plot(metric="event_rate")
 
 
 
-# Var tranform
-transformed_vars = x_train[feat_list]
-
-# transform
-col         = 'avg_txn_amount_service_finance_l3m'
-conditions  = [ transformed_vars[col] <= 287, 
-                transformed_vars[col] > 287 ]
-
-choices     = [-0.128497, 0.431184]
-    
-transformed_vars["avg_txn_amount_service_finance_l3m"] = np.select(conditions, choices, default=np.nan)
-
 # 2
-Xt= df_temp['txn_count_payroll_spend_l1m']
+Xt= df_temp['count_txn_personal_spend_l6m']
 yt = df_temp['target'].astype(int)
 
-optb = OptimalBinning(name='txn_count_payroll_spend_l1m', dtype="numerical", max_n_prebins=4, special_codes=[0], monotonic_trend='descending')
+optb = OptimalBinning(name='count_txn_personal_spend_l6m', dtype="numerical", max_n_prebins=6, special_codes=[0], monotonic_trend='ascending')
 optb.fit(Xt, yt)
 
 Xt_binned = optb.transform(Xt)
 
-ob_txn_count_payroll_spend_l1m = optb.binning_table.build()
+ob_count_txn_personal_spend_l6m = optb.binning_table.build()
 optb.binning_table.plot(metric="event_rate")
 
-
-# transform
-col         = 'txn_count_payroll_spend_l1m'
-conditions  = [ transformed_vars[col] <= 0, 
-                transformed_vars[col] > 0 ]
-
-choices     = [-0.00409379, 0.115614]
-    
-transformed_vars["txn_count_payroll_spend_l1m"] = np.select(conditions, choices, default=np.nan)
 
 # 3
-Xt= df_temp['txn_count_rent_spend_l1m']
+Xt= df_temp['count_txn_service_finance_l6m']
 yt = df_temp['target'].astype(int)
 
-optb = OptimalBinning(name='txn_count_rent_spend_l1m', dtype="numerical", max_n_prebins=4, special_codes=[0], monotonic_trend='descending')
+optb = OptimalBinning(name='count_txn_service_finance_l6m', dtype="numerical", max_n_prebins=6, special_codes=[0], monotonic_trend='ascending')
 optb.fit(Xt, yt)
 
 Xt_binned = optb.transform(Xt)
 
-ob_txn_count_rent_spend_l1m = optb.binning_table.build()
+ob_count_txn_service_finance_l6m = optb.binning_table.build()
 optb.binning_table.plot(metric="event_rate")
 
-
-# transform
-col         = 'txn_count_rent_spend_l1m'
-conditions  = [ transformed_vars[col] <= 0, 
-                transformed_vars[col] > 0 ]
-
-choices     = [0.0723854, -0.619835]
-    
-transformed_vars["txn_count_rent_spend_l1m"] = np.select(conditions, choices, default=np.nan)
-
-# 4
-Xt= df_temp['count_txn_utility_spend_l1m']
-yt = df_temp['target'].astype(int)
-
-optb = OptimalBinning(name='count_txn_utility_spend_l1m', dtype="numerical", max_n_prebins=4, monotonic_trend='ascending')
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_count_txn_utility_spend_l1m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
-
-
-# transform
-col         = 'count_txn_utility_spend_l1m'
-conditions  = [ transformed_vars[col] <= 0, 
-                (transformed_vars[col] > 0) & (transformed_vars[col]<= 2.5),
-                (transformed_vars[col] > 2.5)]
-
-choices     = [0.085333, 0.0961961, -0.41463]
-
-    
-transformed_vars["count_txn_utility_spend_l1m"] = np.select(conditions, choices, default=np.nan)
-
-
-# 5
-Xt= df_temp['avg_txn_amount_cc_payment_l1m']
-yt = df_temp['target'].astype(int)
-
-optb = OptimalBinning(name='avg_txn_amount_cc_payment_l1m', dtype="numerical", max_n_prebins=4, monotonic_trend='descending')
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_avg_txn_amount_cc_payment_l1m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
-
-
-# transform
-col         = 'avg_txn_amount_cc_payment_l1m'
-conditions  = [ transformed_vars[col] <= 278, 
-                (transformed_vars[col] > 278) & (transformed_vars[col]<= 891),
-                (transformed_vars[col] > 891)]
-
-choices     = [-0.338, 0.555447, 2.77641]
-
-    
-transformed_vars["avg_txn_amount_cc_payment_l1m"] = np.select(conditions, choices, default=np.nan)
-
-
-
-# # 6
-# Xt= df_temp['count_txn_cc_payment_l1m']
+# # 4
+# Xt= df_temp['txn_count_rent_spend_l3m']
 # yt = df_temp['target'].astype(int)
 
-# optb = OptimalBinning(name='count_txn_cc_payment_l1m', dtype="numerical", max_n_prebins=4, monotonic_trend='descending')
+# optb = OptimalBinning(name='txn_count_rent_spend_l3m', dtype="numerical", max_n_prebins=5, special_codes=[0], monotonic_trend='descending')
 # optb.fit(Xt, yt)
 
 # Xt_binned = optb.transform(Xt)
 
-# ob_count_txn_cc_payment_l1m = optb.binning_table.build()
+# ob_txn_count_rent_spend_l3m = optb.binning_table.build()
 # optb.binning_table.plot(metric="event_rate")
 
+# 5
+Xt= df_temp['avg_txn_amount_cc_payment_l3m']
+yt = df_temp['target'].astype(int)
 
-# # transform
-# col         = 'count_txn_cc_payment_l1m'
-# conditions  = [ transformed_vars[col] <= 0, 
-#                 (transformed_vars[col] > 0) & (transformed_vars[col]<= 6),
-#                 (transformed_vars[col] > 6)]
+optb = OptimalBinning(name='avg_txn_amount_cc_payment_l3m', dtype="numerical", max_n_prebins=6, special_codes=[0], monotonic_trend='descending')
+optb.fit(Xt, yt)
 
-# choices     = [-0.252111, -0.0686323, 0.980033]
+Xt_binned = optb.transform(Xt)
 
-    
-# transformed_vars["count_txn_cc_payment_l1m"] = np.select(conditions, choices, default=np.nan)
+ob_avg_txn_amount_cc_payment_l3m = optb.binning_table.build()
+optb.binning_table.plot(metric="event_rate")
 
+# # 6
+# Xt= df_temp['count_txn_cc_payment_l6m']
+# yt = df_temp['target'].astype(int)
+
+# optb = OptimalBinning(name='count_txn_cc_payment_l6m', dtype="numerical", max_n_prebins=5, special_codes=[0], monotonic_trend='descending')
+# optb.fit(Xt, yt)
+
+# Xt_binned = optb.transform(Xt)
+
+# ob_count_txn_cc_payment_l6m = optb.binning_table.build()
+# optb.binning_table.plot(metric="event_rate")
 
 # 7
 Xt= df_temp['total_personal_spend_l1m']
 yt = df_temp['target'].astype(int)
 
-optb = OptimalBinning(name='total_personal_spend_l1m', dtype="numerical", max_n_prebins=4)
+optb = OptimalBinning(name='total_personal_spend_l1m', dtype="numerical", max_n_prebins=5, special_codes=[0], monotonic_trend='ascending')
 optb.fit(Xt, yt)
 
 Xt_binned = optb.transform(Xt)
@@ -943,141 +864,23 @@ Xt_binned = optb.transform(Xt)
 ob_total_personal_spend_l1m = optb.binning_table.build()
 optb.binning_table.plot(metric="event_rate")
 
-
-# transform
-col         = 'total_personal_spend_l1m'
-conditions  = [ transformed_vars[col] <= 381, 
-                (transformed_vars[col] > 381)]
-
-choices     = [0.354025, -0.430518]
-
-    
-transformed_vars["total_personal_spend_l1m"] = np.select(conditions, choices, default=np.nan)
-
-# 8
-Xt= df_temp['count_txn_personal_spend_l1m']
-yt = df_temp['target'].astype(int)
-
-optb = OptimalBinning(name='count_txn_personal_spend_l1m', dtype="numerical", max_n_prebins=4, monotonic_trend='ascending')
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_count_txn_personal_spend_l1m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
-
-
-# transform
-col         = 'count_txn_personal_spend_l1m'
-conditions  = [ transformed_vars[col] <= 3, 
-               (transformed_vars[col] > 3) & (transformed_vars[col]<= 13),
-                (transformed_vars[col] > 13)]
-
-choices     = [0.418257, 0.0561908, -0.602313]
-
-    
-transformed_vars["count_txn_personal_spend_l1m"] = np.select(conditions, choices, default=np.nan)
-
-
-# # 9
-# Xt= df_temp['avg_txn_amount_service_finance_l1m']
+# # 8
+# Xt= df_temp['trend_ad_spend_l3l6m']
 # yt = df_temp['target'].astype(int)
 
-# optb = OptimalBinning(name='avg_txn_amount_service_finance_l1m', dtype="numerical", max_n_prebins=4, monotonic_trend='descending')
-# optb.fit(Xt, yt) 
-
-# Xt_binned = optb.transform(Xt)
-
-# ob_avg_txn_amount_service_finance_l1m = optb.binning_table.build()
-# optb.binning_table.plot(metric="event_rate")
-
-
-# # transform
-# col         = 'avg_txn_amount_service_finance_l1m'
-# conditions  = [ transformed_vars[col] <= 101, 
-#                 (transformed_vars[col] > 101)]
-
-# choices     = [-0.152738, 0.311161]
-
-    
-# transformed_vars["avg_txn_amount_service_finance_l1m"] = np.select(conditions, choices, default=np.nan)
-
-# # 10
-# Xt= df_temp['count_txn_service_finance_l1m']
-# yt = df_temp['target'].astype(int)
-
-# optb = OptimalBinning(name='count_txn_service_finance_l1m', dtype="numerical", max_n_prebins=4, monotonic_trend='ascending')
+# optb = OptimalBinning(name='trend_ad_spend_l3l6m', dtype="numerical", max_n_prebins=5, special_codes=[0], monotonic_trend='ascending')
 # optb.fit(Xt, yt)
 
 # Xt_binned = optb.transform(Xt)
 
-# ob_count_txn_service_finance_l1m = optb.binning_table.build()
+# ob_trend_ad_spend_l3l6m = optb.binning_table.build()
 # optb.binning_table.plot(metric="event_rate")
 
-
-# # transform
-# col         = 'count_txn_service_finance_l1m'
-# conditions  = [ transformed_vars[col] <= 4,
-#                (transformed_vars[col] > 4) & (transformed_vars[col]<= 10),
-#                 (transformed_vars[col] > 10)]
-
-# choices     = [0.168061, -0.287829, -0.588583]
-
-    
-# transformed_vars["count_txn_service_finance_l1m"] = np.select(conditions, choices, default=np.nan)
-
-# 11
-Xt= df_temp['trend_utility_l1l6m']
-yt = df_temp['target'].astype(int)
-
-optb = OptimalBinning(name='trend_utility_l1l6m', dtype="numerical", max_n_prebins=4, monotonic_trend='ascending')
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_trend_utility_l1l6m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
-
-
-# transform
-col         = 'trend_utility_l1l6m'
-conditions  = [ transformed_vars[col] <= 1.10,
-                (transformed_vars[col] > 1.10)]
-
-choices     = [0.14527, -0.596951]
-
-    
-transformed_vars["trend_utility_l1l6m"] = np.select(conditions, choices, default=np.nan)
-
-# 12
-Xt= df_temp['trend_ad_spend_l1l6m']
-yt = df_temp['target'].astype(int)
-
-optb = OptimalBinning(name='trend_ad_spend_l1l6m', dtype="numerical", max_n_prebins=4, special_codes=[0])
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_trend_ad_spend_l1l6m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
-
-
-# transform
-col         = 'trend_ad_spend_l1l6m'
-conditions  = [ transformed_vars[col] <= 0,
-                (transformed_vars[col] > 0)]
-
-choices     = [0.0355715, -0.000393683]
-
-    
-transformed_vars["trend_ad_spend_l1l6m"] = np.select(conditions, choices, default=np.nan)
-
-
-# 13
+# 9
 Xt= df_temp['trend_personal_spend_l1l6m']
 yt = df_temp['target'].astype(int)
 
-optb = OptimalBinning(name='trend_personal_spend_l1l6m', dtype="numerical", max_n_prebins=4, special_codes=[0])
+optb = OptimalBinning(name='trend_personal_spend_l1l6m', dtype="numerical", max_n_prebins=6, special_codes=[0], monotonic_trend='ascending')
 optb.fit(Xt, yt)
 
 Xt_binned = optb.transform(Xt)
@@ -1086,64 +889,135 @@ ob_trend_personal_spend_l1l6m = optb.binning_table.build()
 optb.binning_table.plot(metric="event_rate")
 
 
-# transform
+# 10
+Xt= df_temp['perc_service_finance_spend_l6m']
+yt = df_temp['target'].astype(int)
+
+optb = OptimalBinning(name='perc_service_finance_spend_l6m', dtype="numerical", max_n_prebins=6, special_codes=[0], monotonic_trend='ascending')
+optb.fit(Xt, yt)
+
+Xt_binned = optb.transform(Xt)
+
+ob_perc_service_finance_spend_l6m = optb.binning_table.build()
+optb.binning_table.plot(metric="event_rate")
+
+
+
+
+# Transformation
+transformed_vars = x_train[feat_list]
+#1
+
+col         = 'avg_txn_amount_service_finance_l3m'
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 73),
+               (transformed_vars[col] > 73) & (transformed_vars[col]<= 287),
+                transformed_vars[col] > 287 ]
+
+choices     = [0.283408, -0.611056, -0.273851, 0.431184]
+    
+transformed_vars["avg_txn_amount_service_finance_l3m"] = np.select(conditions, choices, default=np.nan)
+
+#2
+col         = 'count_txn_personal_spend_l6m'
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 21),
+               (transformed_vars[col] > 21) & (transformed_vars[col]<=137),
+               (transformed_vars[col] > 137) & (transformed_vars[col]<=337),
+                transformed_vars[col] > 337 ]
+
+choices     = [0.458428, 0.476128, -0.103691, -0.613124, -0.780178]
+    
+transformed_vars["count_txn_personal_spend_l6m"] = np.select(conditions, choices, default=np.nan)
+
+#3
+col         = 'count_txn_service_finance_l6m'
+conditions  = [ transformed_vars[col] <= 0, 
+                (transformed_vars[col] > 0) & (transformed_vars[col]<= 12),
+                (transformed_vars[col] > 12) & (transformed_vars[col]<=26),
+                (transformed_vars[col] > 26) & (transformed_vars[col]<=64),
+                transformed_vars[col] > 64 ]
+
+choices     = [0.286886, 0.0987504, 0.0355715, -0.0408015, -0.865215]
+    
+transformed_vars["count_txn_service_finance_l6m"] = np.select(conditions, choices, default=np.nan)
+
+# #4
+# col         = 'txn_count_rent_spend_l3m'
+# conditions  = [ transformed_vars[col] <= 0, 
+#                 (transformed_vars[col] > 0) & (transformed_vars[col]<= 2),
+#                 transformed_vars[col] > 2 ]
+
+# choices     = [0.10323, -0.820095, -0.385642]
+    
+# transformed_vars["txn_count_rent_spend_l3m"] = np.select(conditions, choices, default=np.nan)
+
+#5
+col         = 'avg_txn_amount_cc_payment_l3m'
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 71),
+               (transformed_vars[col] > 71) & (transformed_vars[col]<= 122),
+               (transformed_vars[col] > 122) & (transformed_vars[col]<= 565),
+                transformed_vars[col] > 565 ]
+
+choices     = [-0.413954, -1.04844, -0.332153, 0.0272032, 1.93581]
+    
+transformed_vars["avg_txn_amount_cc_payment_l3m"] = np.select(conditions, choices, default=np.nan)
+
+# #6
+# col         = 'count_txn_cc_payment_l6m'
+# conditions  = [ transformed_vars[col] <= 0, 
+#                (transformed_vars[col] > 0) & (transformed_vars[col]<= 4),
+#                (transformed_vars[col] > 4) & (transformed_vars[col]<= 39),
+#                (transformed_vars[col] > 39) & (transformed_vars[col]<= 75),
+#                 transformed_vars[col] > 75 ]
+
+# choices     = [-0.300901, -0.606282, 0.143202, 0.283408, 1.74032]
+    
+# transformed_vars["count_txn_cc_payment_l6m"] = np.select(conditions, choices, default=np.nan)
+
+#7
+col         = 'total_personal_spend_l1m'
+conditions  = [ transformed_vars[col] <= 0, 
+                (transformed_vars[col] > 0) & (transformed_vars[col]<= 381),
+                transformed_vars[col] > 381 ]
+
+choices     = [0.42906, 0.184607, -0.430518]
+    
+transformed_vars["total_personal_spend_l1m"] = np.select(conditions, choices, default=np.nan)
+
+# #8
+# col         = 'trend_ad_spend_l3l6m'
+# conditions  = [ transformed_vars[col] <= 0, 
+#                 transformed_vars[col] > 0 ]
+
+# choices     = [-0.0174396, 0.951862]
+    
+# transformed_vars["trend_ad_spend_l3l6m"] = np.select(conditions, choices, default=np.nan)
+
+#9
 col         = 'trend_personal_spend_l1l6m'
-conditions  = [ transformed_vars[col] <= 0,
-               (transformed_vars[col] > 0) & (transformed_vars[col]<= 1.07),
-               (transformed_vars[col] > 1.07) & (transformed_vars[col]<= 1.26),
-                (transformed_vars[col] > 1.26)]
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 0.60),
+                transformed_vars[col] > 0.60 ]
 
-choices     = [0.42906, -0.40868, 1.90737, -0.349274]
-
+choices     = [0.42906, 0.0521008, -0.379944]
     
 transformed_vars["trend_personal_spend_l1l6m"] = np.select(conditions, choices, default=np.nan)
 
-# 14
-Xt= df_temp['perc_utility_spend_l3m']
-yt = df_temp['target'].astype(int)
+#10
+col         = 'perc_service_finance_spend_l6m'
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 1.49),
+               (transformed_vars[col] > 1.49) & (transformed_vars[col]<= 28),
+                transformed_vars[col] > 28 ]
 
-optb = OptimalBinning(name='perc_utility_spend_l3m', dtype="numerical", max_n_prebins=4, monotonic_trend='ascending')
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_perc_utility_spend_l3m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
-
-
-# transform
-col         = 'perc_utility_spend_l3m'
-conditions  = [ transformed_vars[col] <= 0.22,
-               (transformed_vars[col] > 0.22) & (transformed_vars[col]<= 8.65),
-                (transformed_vars[col] > 8.65)]
-
-choices     = [0.32805, -0.289015, -0.596951]
-
-transformed_vars["perc_utility_spend_l3m"] = np.select(conditions, choices, default=np.nan)
-
-# 15
-Xt= df_temp['perc_service_finance_spend_l3m']
-yt = df_temp['target'].astype(int)
-
-optb = OptimalBinning(name='perc_service_finance_spend_l3m', dtype="numerical", max_n_prebins=4, special_codes=[0], monotonic_trend='ascending')
-optb.fit(Xt, yt)
-
-Xt_binned = optb.transform(Xt)
-
-ob_perc_service_finance_spend_l3m = optb.binning_table.build()
-optb.binning_table.plot(metric="event_rate")
+choices     = [0.286886, 0.931659, -0.199925, -0.529742]
+    
+transformed_vars["perc_service_finance_spend_l6m"] = np.select(conditions, choices, default=np.nan)
 
 
-# transform
-col         = 'perc_service_finance_spend_l3m'
-conditions  = [ transformed_vars[col] <=0,
-               (transformed_vars[col] > 0) & (transformed_vars[col]<= 5.47),
-               (transformed_vars[col] > 5.47) & (transformed_vars[col]<= 23.15),
-                (transformed_vars[col] > 23.15)]
 
-choices     = [0.283408, 0.219875, -0.198043, -0.552215]
-
-transformed_vars["perc_service_finance_spend_l3m"] = np.select(conditions, choices, default=np.nan)
 
 
 
@@ -1176,8 +1050,11 @@ feat_imp = feature_importance(logreg_model, X_train[feat_list], show_plot=True)
 
 feat_imp.sort_values(by='importance', ascending=False)
 
+# coeff
+coeff1 = pd.DataFrame(zip(X_train.columns, np.transpose(logreg_model.coef_.tolist()[0])), columns=['features', 'coef'])
 
-
+logreg_model.coef_
+logreg_model.intercept_
 
 
 ## Test model
@@ -1191,153 +1068,116 @@ x_test.fillna(0, inplace=True)
 
 transformed_vars = x_test[feat_list]
 
-# transform
+#1
+
 col         = 'avg_txn_amount_service_finance_l3m'
-conditions  = [ transformed_vars[col] <= 287, 
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 73),
+               (transformed_vars[col] > 73) & (transformed_vars[col]<= 287),
                 transformed_vars[col] > 287 ]
 
-choices     = [-0.128497, 0.431184]
+choices     = [0.283408, -0.611056, -0.273851, 0.431184]
     
 transformed_vars["avg_txn_amount_service_finance_l3m"] = np.select(conditions, choices, default=np.nan)
 
-
-col         = 'txn_count_payroll_spend_l1m'
+#2
+col         = 'count_txn_personal_spend_l6m'
 conditions  = [ transformed_vars[col] <= 0, 
-                transformed_vars[col] > 0 ]
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 21),
+               (transformed_vars[col] > 21) & (transformed_vars[col]<=137),
+               (transformed_vars[col] > 137) & (transformed_vars[col]<=337),
+                transformed_vars[col] > 337 ]
 
-choices     = [-0.00409379, 0.115614]
+choices     = [0.458428, 0.476128, -0.103691, -0.613124, -0.780178]
     
-transformed_vars["txn_count_payroll_spend_l1m"] = np.select(conditions, choices, default=np.nan)
+transformed_vars["count_txn_personal_spend_l6m"] = np.select(conditions, choices, default=np.nan)
 
-# transform
-col         = 'txn_count_rent_spend_l1m'
+#3
+col         = 'count_txn_service_finance_l6m'
 conditions  = [ transformed_vars[col] <= 0, 
-                transformed_vars[col] > 0 ]
+                (transformed_vars[col] > 0) & (transformed_vars[col]<= 12),
+                (transformed_vars[col] > 12) & (transformed_vars[col]<=26),
+                (transformed_vars[col] > 26) & (transformed_vars[col]<=64),
+                transformed_vars[col] > 64 ]
 
-choices     = [0.0723854, -0.619835]
+choices     = [0.286886, 0.0987504, 0.0355715, -0.0408015, -0.865215]
     
-transformed_vars["txn_count_rent_spend_l1m"] = np.select(conditions, choices, default=np.nan)
+transformed_vars["count_txn_service_finance_l6m"] = np.select(conditions, choices, default=np.nan)
 
-col         = 'count_txn_utility_spend_l1m'
-conditions  = [ transformed_vars[col] <= 0, 
-                (transformed_vars[col] > 0) & (transformed_vars[col]<= 2.5),
-                (transformed_vars[col] > 2.5)]
-
-choices     = [0.085333, 0.0961961, -0.41463]
-
-    
-transformed_vars["count_txn_utility_spend_l1m"] = np.select(conditions, choices, default=np.nan)
-
-col         = 'avg_txn_amount_cc_payment_l1m'
-conditions  = [ transformed_vars[col] <= 278, 
-                (transformed_vars[col] > 278) & (transformed_vars[col]<= 891),
-                (transformed_vars[col] > 891)]
-
-choices     = [-0.338, 0.555447, 2.77641]
-
-    
-transformed_vars["avg_txn_amount_cc_payment_l1m"] = np.select(conditions, choices, default=np.nan)
-
-
-# col         = 'count_txn_cc_payment_l1m'
+# #4
+# col         = 'txn_count_rent_spend_l3m'
 # conditions  = [ transformed_vars[col] <= 0, 
-#                 (transformed_vars[col] > 0) & (transformed_vars[col]<= 6),
-#                 (transformed_vars[col] > 6)]
+#                 (transformed_vars[col] > 0) & (transformed_vars[col]<= 2),
+#                 transformed_vars[col] > 2 ]
 
-# choices     = [-0.252111, -0.0686323, 0.980033]
-
+# choices     = [0.10323, -0.820095, -0.385642]
     
-# transformed_vars["count_txn_cc_payment_l1m"] = np.select(conditions, choices, default=np.nan)
+# transformed_vars["txn_count_rent_spend_l3m"] = np.select(conditions, choices, default=np.nan)
 
+#5
+col         = 'avg_txn_amount_cc_payment_l3m'
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 71),
+               (transformed_vars[col] > 71) & (transformed_vars[col]<= 122),
+               (transformed_vars[col] > 122) & (transformed_vars[col]<= 565),
+                transformed_vars[col] > 565 ]
 
+choices     = [-0.413954, -1.04844, -0.332153, 0.0272032, 1.93581]
+    
+transformed_vars["avg_txn_amount_cc_payment_l3m"] = np.select(conditions, choices, default=np.nan)
+
+# #6
+# col         = 'count_txn_cc_payment_l6m'
+# conditions  = [ transformed_vars[col] <= 0, 
+#                (transformed_vars[col] > 0) & (transformed_vars[col]<= 4),
+#                (transformed_vars[col] > 4) & (transformed_vars[col]<= 39),
+#                (transformed_vars[col] > 39) & (transformed_vars[col]<= 75),
+#                 transformed_vars[col] > 75 ]
+
+# choices     = [-0.300901, -0.606282, 0.143202, 0.283408, 1.74032]
+    
+# transformed_vars["count_txn_cc_payment_l6m"] = np.select(conditions, choices, default=np.nan)
+
+#7
 col         = 'total_personal_spend_l1m'
-conditions  = [ transformed_vars[col] <= 381, 
-                (transformed_vars[col] > 381)]
+conditions  = [ transformed_vars[col] <= 0, 
+                (transformed_vars[col] > 0) & (transformed_vars[col]<= 381),
+                transformed_vars[col] > 381 ]
 
-choices     = [0.354025, -0.430518]
-
+choices     = [0.42906, 0.184607, -0.430518]
     
 transformed_vars["total_personal_spend_l1m"] = np.select(conditions, choices, default=np.nan)
 
-col         = 'count_txn_personal_spend_l1m'
-conditions  = [ transformed_vars[col] <= 3, 
-               (transformed_vars[col] > 3) & (transformed_vars[col]<= 13),
-                (transformed_vars[col] > 13)]
+# #8
+# col         = 'trend_ad_spend_l3l6m'
+# conditions  = [ transformed_vars[col] <= 0, 
+#                 transformed_vars[col] > 0 ]
 
-choices     = [0.418257, 0.0561908, -0.602313]
-
+# choices     = [-0.0174396, 0.951862]
     
-transformed_vars["count_txn_personal_spend_l1m"] = np.select(conditions, choices, default=np.nan)
+# transformed_vars["trend_ad_spend_l3l6m"] = np.select(conditions, choices, default=np.nan)
 
-# col         = 'avg_txn_amount_service_finance_l1m'
-# conditions  = [ transformed_vars[col] <= 101, 
-#                 (transformed_vars[col] > 101)]
-
-# choices     = [-0.152738, 0.311161]
-
-    
-# transformed_vars["avg_txn_amount_service_finance_l1m"] = np.select(conditions, choices, default=np.nan)
-
-# col         = 'count_txn_service_finance_l1m'
-# conditions  = [ transformed_vars[col] <= 4,
-#                (transformed_vars[col] > 4) & (transformed_vars[col]<= 10),
-#                 (transformed_vars[col] > 10)]
-
-# choices     = [0.168061, -0.287829, -0.588583]
-
-    
-# transformed_vars["count_txn_service_finance_l1m"] = np.select(conditions, choices, default=np.nan)
-
-col         = 'trend_utility_l1l6m'
-conditions  = [ transformed_vars[col] <= 1.10,
-                (transformed_vars[col] > 1.10)]
-
-choices     = [0.14527, -0.596951]
-
-    
-transformed_vars["trend_utility_l1l6m"] = np.select(conditions, choices, default=np.nan)
-
-
-col         = 'trend_ad_spend_l1l6m'
-conditions  = [ transformed_vars[col] <= 0,
-                (transformed_vars[col] > 0)]
-
-choices     = [0.0355715, -0.000393683]
-
-    
-transformed_vars["trend_ad_spend_l1l6m"] = np.select(conditions, choices, default=np.nan)
-
-
+#9
 col         = 'trend_personal_spend_l1l6m'
-conditions  = [ transformed_vars[col] <= 0,
-               (transformed_vars[col] > 0) & (transformed_vars[col]<= 1.07),
-               (transformed_vars[col] > 1.07) & (transformed_vars[col]<= 1.26),
-                (transformed_vars[col] > 1.26)]
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 0.60),
+                transformed_vars[col] > 0.60 ]
 
-choices     = [0.42906, -0.40868, 1.90737, -0.349274]
-
+choices     = [0.42906, 0.0521008, -0.379944]
     
 transformed_vars["trend_personal_spend_l1l6m"] = np.select(conditions, choices, default=np.nan)
 
 
-col         = 'perc_utility_spend_l3m'
-conditions  = [ transformed_vars[col] <= 0.22,
-               (transformed_vars[col] > 0.22) & (transformed_vars[col]<= 8.65),
-                (transformed_vars[col] > 8.65)]
+#10
+col         = 'perc_service_finance_spend_l6m'
+conditions  = [ transformed_vars[col] <= 0, 
+               (transformed_vars[col] > 0) & (transformed_vars[col]<= 1.49),
+               (transformed_vars[col] > 1.49) & (transformed_vars[col]<= 28),
+                transformed_vars[col] > 28 ]
 
-choices     = [0.32805, -0.289015, -0.596951]
-
-transformed_vars["perc_utility_spend_l3m"] = np.select(conditions, choices, default=np.nan)
-
-col         = 'perc_service_finance_spend_l3m'
-conditions  = [ transformed_vars[col] <=0,
-               (transformed_vars[col] > 0) & (transformed_vars[col]<= 5.47),
-               (transformed_vars[col] > 5.47) & (transformed_vars[col]<= 23.15),
-                (transformed_vars[col] > 23.15)]
-
-choices     = [0.283408, 0.219875, -0.198043, -0.552215]
-
-transformed_vars["perc_service_finance_spend_l3m"] = np.select(conditions, choices, default=np.nan)
+choices     = [0.286886, 0.931659, -0.199925, -0.529742]
+    
+transformed_vars["perc_service_finance_spend_l6m"] = np.select(conditions, choices, default=np.nan)
 
 
 # copy
@@ -1409,33 +1249,48 @@ print(roc_auc_score(y_test, test_pred))
 
 
 
-# ### Credit scoring part
+### Credit scoring part
 
-# transformed_vars['pred_proba'] = logreg_model.predict_proba(transformed_vars[feat_list])[:,1)
+X_train['pred_proba'] = logreg_model.predict_proba(X_train[feat_list])[:,1]
 
-# transformed_vars['odds'] = transformed_vars['pred_proba'] / (1-transformed_vars['pred_proba'])
+X_train['odds'] = X_train['pred_proba'] / (1-X_train['pred_proba'])
 
-# transformed_vars['log_odds'] = np.log(transformed_vars['odds'])
+X_train['log_odds'] = np.log(X_train['odds'])
 
-# transformed_vars['risk_score'] = 644.2 - (86.6 * transformed_vars['log_odds'])
+X_train['spending_risk_score'] = 601.7 - (86.6 * X_train['log_odds'])
 
-# # Note: In the above equation, Offset and factor values should be adjusted accordig to PD in KS table
+# Note: In the above equation, Offset and factor values should be adjusted accordig to PD in KS table
 
 
-     
+X_train['spending_risk_score'].max()
         
         
         
+    
+## Univariates
+
+grouped = pd.DataFrame()
+for col in df_main.columns:
+    if (col== 'target'):
+        continue
+    else:
+        temp = df_main[[col]].copy()
+        temp.replace({0:np.nan}, inplace=True)
+        temp.dropna(subset = [col], inplace=True)
+        # temp = temp[temp[col]>0]
+        try:
+            temp2 = temp.describe(percentiles=[0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 0.8, 0.9, 0.95, 0.99, 1])
+            grouped = grouped.append(temp2.T)
+        except:
+            grouped = temp.describe(percentiles=[0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.75, 0.8, 0.9, 0.95, 0.99, 1]).T
+
+grouped['missing_count'] = len(df_main) - grouped['count']
+grouped['missing_count%'] = 1-(grouped['count']/len(df_main))
+    
         
         
         
-        
-        
-        
-        
-        
-        
-        
+ 
         
         
         
